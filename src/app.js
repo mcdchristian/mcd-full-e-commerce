@@ -57,8 +57,9 @@ app.prepareNext = async () => {
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({
-    message: err.message || 'Something went wrong on the server'
+  res.status(err.status || 500).json({
+    message: err.message || 'Something went wrong on the server',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 

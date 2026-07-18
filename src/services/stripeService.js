@@ -27,6 +27,19 @@ exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
   }
 };
 
+exports.createPaymentIntent = async (amount, currency = 'eur') => {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100),
+      currency,
+    });
+    return paymentIntent;
+  } catch (error) {
+    console.error('Stripe PaymentIntent Error:', error.message);
+    throw new Error('Payment intent creation failed');
+  }
+};
+
 exports.handleWebhook = async (sig, payload) => {
   let event;
   try {
