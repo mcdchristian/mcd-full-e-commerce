@@ -2,14 +2,19 @@ const { Cart, CartItem, Product } = require('../models');
 
 exports.getCart = async (req, res) => {
   try {
-    const cart = await Cart.findOne({
+    const [cart] = await Cart.findOrCreate({
       where: { userId: req.user.id },
+      defaults: { userId: req.user.id }
+    });
+
+    const fullCart = await Cart.findByPk(cart.id, {
       include: [{
         model: CartItem,
         include: [Product]
       }]
     });
-    res.json(cart);
+
+    res.json(fullCart);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -18,14 +23,33 @@ exports.getCart = async (req, res) => {
 exports.addToCart = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
-    const cart = await Cart.findOne({ where: { userId: req.user.id } });
+
+    if (!productId) {
+      return res.status(400).json({ message: 'productId is required' });
+    }
+
+    // Verify product exists and has stock
+    const product = await Product.findByPk(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    const [cart] = await Cart.findOrCreate({
+      where: { userId: req.user.id },
+      defaults: { userId: req.user.id }
+    });
 
     let cartItem = await CartItem.findOne({
       where: { cartId: cart.id, productId }
     });
 
+    const newQty = (cartItem ? cartItem.quantity : 0) + (quantity || 1);
+    if (newQty > product.stock) {
+      return res.status(400).json({ message: 'Insufficient stock' });
+    }
+
     if (cartItem) {
-      cartItem.quantity += quantity || 1;
+      cartItem.quantity = newQty;
       await cartItem.save();
     } else {
       cartItem = await CartItem.create({
@@ -44,7 +68,19 @@ exports.addToCart = async (req, res) => {
 exports.updateCartItem = async (req, res) => {
   try {
     const { quantity } = req.body;
-    const cartItem = await CartItem.findByPk(req.params.id);
+
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ message: 'quantity must be at least 1' });
+    }
+
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    const cartItem = await CartItem.findOne({
+      where: { id: req.params.id, cartId: cart.id }
+    });
 
     if (!cartItem) {
       return res.status(404).json({ message: 'Cart item not found' });
@@ -61,7 +97,14 @@ exports.updateCartItem = async (req, res) => {
 
 exports.removeFromCart = async (req, res) => {
   try {
-    const cartItem = await CartItem.findByPk(req.params.id);
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    const cartItem = await CartItem.findOne({
+      where: { id: req.params.id, cartId: cart.id }
+    });
 
     if (!cartItem) {
       return res.status(404).json({ message: 'Cart item not found' });

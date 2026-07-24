@@ -26,6 +26,11 @@ exports.createOrder = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { shippingAddress } = req.body;
+
+    if (!shippingAddress || shippingAddress.trim().length === 0) {
+      await t.rollback();
+      return res.status(400).json({ message: 'shippingAddress is required' });
+    }
     
     // 1. Get user's cart with items and product details
     const cart = await Cart.findOne({
@@ -136,25 +141,30 @@ exports.webhookHandler = async (req, res) => {
   try {
     event = await stripeService.handleWebhook(sig, req.body);
   } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event
-  if (event.type === 'payment_intent.succeeded') {
-    const paymentIntent = event.data.object;
-    
-    // Find order and user to send notification
-    const order = await Order.findOne({
-      where: { stripePaymentIntentId: paymentIntent.id },
-      include: ['User']
-    });
+  try {
+    // Handle the event
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object;
 
-    if (order) {
-      await order.update({ status: 'paid' });
-      notificationService.paymentSuccess(order.User, order).catch(console.error);
+      const order = await Order.findOne({
+        where: { stripePaymentIntentId: paymentIntent.id },
+        include: ['User']
+      });
+
+      if (order) {
+        await order.update({ status: 'paid' });
+        notificationService.paymentSuccess(order.User, order).catch(console.error);
+      }
+
+      console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
     }
-    
-    console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
+  } catch (err) {
+    console.error('Webhook event processing error:', err.message);
+    // Still return 200 to prevent Stripe from retrying
   }
 
   res.json({ received: true });

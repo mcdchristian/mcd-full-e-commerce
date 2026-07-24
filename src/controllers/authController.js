@@ -9,7 +9,7 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, role } = req.body;
+    const { firstName, lastName, email, password } = req.body;
 
     const userExists = await User.findOne({ where: { email } });
     if (userExists) {
@@ -21,7 +21,7 @@ exports.register = async (req, res) => {
       lastName,
       email,
       password,
-      role
+      role: 'customer'
     });
 
     // Create a cart for the user

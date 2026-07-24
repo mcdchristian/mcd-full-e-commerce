@@ -1,3 +1,4 @@
+const { sequelize } = require('../config/db');
 const User = require('./User');
 const Category = require('./Category');
 const Product = require('./Product');
@@ -35,6 +36,7 @@ Product.hasMany(OrderItem, { foreignKey: 'productId' });
 OrderItem.belongsTo(Product, { foreignKey: 'productId' });
 
 module.exports = {
+  sequelize,
   User,
   Category,
   Product,
