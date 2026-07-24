@@ -17,8 +17,15 @@ const app = express();
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
-app.use(cors());
-app.use(morgan('dev'));
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.APP_URL
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(cookieParser());
 
 // Stripe webhook needs raw body
@@ -28,6 +35,11 @@ app.use((req, res, next) => {
   } else {
     express.json()(req, res, next);
   }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
 });
 
 // Routes

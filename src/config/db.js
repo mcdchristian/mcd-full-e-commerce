@@ -9,7 +9,7 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'mysql',
-    logging: false,
+    logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
       max: 10,
       min: 0,
@@ -23,13 +23,20 @@ const sequelize = new Sequelize(
   }
 );
 
-const connectDB = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Connection has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-    process.exit(1);
+const connectDB = async (retries = 5) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await sequelize.authenticate();
+      console.log('Database connection established successfully.');
+      return;
+    } catch (error) {
+      console.error(`DB connection attempt ${i + 1}/${retries} failed:`, error.message);
+      if (i === retries - 1) {
+        console.error('All DB connection attempts exhausted. Exiting.');
+        process.exit(1);
+      }
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
   }
 };
 

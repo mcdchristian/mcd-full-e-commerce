@@ -11,8 +11,8 @@ const {
 const { protect, authorize } = require('../middleware/auth');
 
 router.get('/', getProducts);
+router.get('/categories/all', getCategories);
 router.get('/:id', getProductById);
-router.get('/categories/all', getCategories); // Custom route
 
 // Admin only routes
 router.post('/', protect, authorize('admin'), createProduct);
