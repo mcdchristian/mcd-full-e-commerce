@@ -49,7 +49,8 @@ exports.createOrder = async (req, res) => {
     let totalAmount = 0;
     for (const item of cart.CartItems) {
       if (item.Product.stock < item.quantity) {
-        throw new Error(`Insufficient stock for product: ${item.Product.name}`);
+        await t.rollback();
+        return res.status(400).json({ message: `Insufficient stock for product: ${item.Product.name}` });
       }
       totalAmount += item.Product.price * item.quantity;
     }
