@@ -14,9 +14,12 @@ const orderRoutes = require('./routes/orderRoutes');
 
 const app = express();
 
+app.use(requestId);
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'same-origin' }
 }));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
