@@ -3,6 +3,23 @@ const app = require('./app');
 const { connectDB, sequelize } = require('./config/db');
 require('./models'); // Load associations
 
+const requiredEnvVars = [
+  'JWT_SECRET',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'APP_URL'
+];
+
+const validateEnv = () => {
+  const missing = requiredEnvVars.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+};
+
+validateEnv();
+
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
