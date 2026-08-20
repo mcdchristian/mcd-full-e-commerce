@@ -28,13 +28,14 @@ app.use(cors({
 }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(cookieParser());
+app.set('trust proxy', 1);
 
 // Stripe webhook needs raw body
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/orders/webhook') {
     next();
   } else {
-    express.json()(req, res, next);
+    express.json({ limit: '10kb' })(req, res, next);
   }
 });
 
