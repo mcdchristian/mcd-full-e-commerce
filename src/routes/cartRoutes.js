@@ -4,7 +4,8 @@ const {
   getCart,
   addToCart,
   updateCartItem,
-  removeFromCart
+  removeFromCart,
+  clearCart
 } = require('../controllers/cartController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -16,5 +17,6 @@ router.get('/', getCart);
 router.post('/', validate(cartSchemas.addItem), addToCart);
 router.put('/item/:id', validate(cartSchemas.updateItem), updateCartItem);
 router.delete('/item/:id', removeFromCart);
+router.delete('/', clearCart);
 
 module.exports = router;
