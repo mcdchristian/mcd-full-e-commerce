@@ -54,6 +54,14 @@ app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 
+// Handle unknown API routes (404)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Cannot find ${req.method} ${req.originalUrl} on this server`
+  });
+});
+
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
