@@ -1,5 +1,6 @@
 # Modern E-Commerce Platform
 
+![Node.js](https://img.shields.io/badge/Node.js-✓-green.svg) ![Express](https://img.shields.io/badge/Express-✓-black.svg) ![Next.js](https://img.shields.io/badge/Next.js-✓-black.svg) ![Stripe](https://img.shields.io/badge/Stripe-✓-blue.svg)
 A professional, full-stack e-commerce solution built with **Next.js**, **Express**, and **Sequelize**. This project features a custom server integration allowing seamless communication between a robust Node.js backend and a high-performance React frontend.
 
 ## 🚀 Overview
@@ -87,6 +88,8 @@ This platform is designed to provide a premium shopping experience with a focus 
    DB_HOST=localhost
    JWT_SECRET=your_jwt_secret
    STRIPE_SECRET_KEY=your_stripe_key
+   STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+   APP_URL=http://localhost:3000
    ```
 
 4. **Run the Development Server**:
