@@ -116,3 +116,20 @@ exports.removeFromCart = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.clearCart = async (req, res) => {
+  try {
+    const cart = await Cart.findOne({ where: { userId: req.user.id } });
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    const deletedCount = await CartItem.destroy({ where: { cartId: cart.id } });
+    res.json({
+      message: 'Cart cleared successfully',
+      itemsRemoved: deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

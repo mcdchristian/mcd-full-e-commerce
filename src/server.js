@@ -1,6 +1,7 @@
 require('dotenv').config();
 const app = require('./app');
 const { connectDB, sequelize } = require('./config/db');
+const logger = require('./utils/logger');
 require('./models'); // Load associations
 
 const requiredEnvVars = [
@@ -13,7 +14,7 @@ const requiredEnvVars = [
 const validateEnv = () => {
   const missing = requiredEnvVars.filter(key => !process.env[key]);
   if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`);
+    logger.error('Missing required environment variables', { variables: missing });
     process.exit(1);
   }
 };
@@ -28,21 +29,21 @@ const startServer = async () => {
     
     // Sync models
     await sequelize.sync({ force: false });
-    console.log('Database synced');
+    logger.info('Database synced successfully');
 
     // Prepare Next.js
     await app.prepareNext();
 
     const server = app.listen(PORT, () => {
-      console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      logger.info('Server started', { mode: process.env.NODE_ENV, port: PORT });
     });
 
     // Graceful shutdown
     const shutdown = async (signal) => {
-      console.log(`\n${signal} received. Shutting down gracefully...`);
+      logger.info('Graceful shutdown initiated', { signal });
       server.close(async () => {
         await sequelize.close();
-        console.log('Database connection closed.');
+        logger.info('Database connection closed');
         process.exit(0);
       });
       // Force exit after 10s if graceful shutdown fails
@@ -52,7 +53,7 @@ const startServer = async () => {
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (error) {
-    console.error('Failed to start server:', error);
+    logger.error('Failed to start server', { error: error.message });
     process.exit(1);
   }
 };
