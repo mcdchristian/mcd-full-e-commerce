@@ -1,8 +1,29 @@
+require('dotenv').config();
+
 const { Category, Product, User, Cart } = require('../src/models');
 const { sequelize } = require('../src/config/db');
 
+// sync({ force: true }) drops every table before recreating it, so running this
+// against a production .env destroys the live catalogue, orders and accounts.
+const assertSafeToSeed = () => {
+  if (process.env.NODE_ENV !== 'production') return;
+
+  if (process.env.ALLOW_DESTRUCTIVE_SEED === 'true') {
+    console.warn('NODE_ENV=production and ALLOW_DESTRUCTIVE_SEED=true: dropping all tables.');
+    return;
+  }
+
+  console.error(
+    'Refusing to seed: NODE_ENV=production and this script drops every table.\n' +
+    'Set ALLOW_DESTRUCTIVE_SEED=true if you really mean to wipe this database.'
+  );
+  process.exit(1);
+};
+
 const seed = async () => {
   try {
+    assertSafeToSeed();
+
     await sequelize.sync({ force: true });
     console.log('Database cleared and synced');
 
