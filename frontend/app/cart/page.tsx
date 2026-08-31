@@ -5,11 +5,14 @@ import { useAuth } from '../../store/authStore';
 import api from '../../lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import axios from 'axios';
+import toast from 'react-hot-toast';
 
 function CartView() {
   const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get('success') === 'true';
@@ -22,16 +25,28 @@ function CartView() {
   }, [isSuccess, clearCart, items.length]);
 
   const handleCheckout = async () => {
+    // The session is still being restored from the stored token; bouncing to
+    // the login page now would sign out a visitor who is already signed in.
+    if (isAuthLoading) return;
+
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/cart');
       return;
     }
 
+    setIsRedirecting(true);
+
     try {
-      const res = await api.post('/orders/checkout-session', { items });
+      const res = await api.post('/orders/checkout-session', {
+        // The server prices the order from its own catalogue, so it only needs
+        // to know which products and how many of each.
+        items: items.map(({ id, quantity }) => ({ id, quantity })),
+      });
       window.location.href = res.data.url;
     } catch (err) {
-      alert('Erreur lors de l\'initialisation du paiement. Vérifiez vos clés Stripe dans le fichier .env');
+      const serverMessage = axios.isAxiosError(err) ? err.response?.data?.message : null;
+      toast.error(serverMessage || "Impossible d'initialiser le paiement. Réessayez dans un instant.");
+      setIsRedirecting(false);
     }
   };
 
@@ -122,9 +137,10 @@ function CartView() {
                     </div>
                     <button 
                       onClick={handleCheckout}
-                      className="w-full py-4 bg-cyan-500 text-white rounded-2xl font-bold hover:bg-cyan-600 transition-all shadow-lg shadow-cyan-500/20"
+                      disabled={isRedirecting || isAuthLoading}
+                      className="w-full py-4 bg-cyan-500 text-white rounded-2xl font-bold hover:bg-cyan-600 transition-all shadow-lg shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Passer à la caisse
+                      {isRedirecting ? 'Redirection...' : 'Passer à la caisse'}
                     </button>
                     <button 
                       onClick={clearCart}
