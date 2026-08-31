@@ -89,7 +89,7 @@ const nextApp = next({ dev, dir: path.join(__dirname, '../frontend'), hostname, 
 const handle = nextApp.getRequestHandler();
 
 // Error Handling Middleware
-// eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity
+// The four-argument signature is what marks this as an error handler to Express.
 const errorHandler = (err, req, res, next) => {
   logger.error('Unhandled error', {
     requestId: req.id,
