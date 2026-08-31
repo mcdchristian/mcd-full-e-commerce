@@ -7,6 +7,7 @@ const path = require('path');
 const next = require('next');
 const requestId = require('./middleware/requestId');
 const logger = require('./utils/logger');
+const { sequelize } = require('./config/db');
 
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
@@ -44,8 +45,24 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+// A liveness probe that never touches the database reports "ok" while every
+// request is failing, so the connection is verified before answering.
+app.get('/api/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    database: 'up'
+  };
+
+  try {
+    await sequelize.authenticate();
+  } catch (error) {
+    logger.error('Health check database probe failed', { requestId: req.id, error: error.message });
+    return res.status(503).json({ ...health, status: 'degraded', database: 'down' });
+  }
+
+  res.json(health);
 });
 
 // Routes
