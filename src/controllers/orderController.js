@@ -225,14 +225,24 @@ exports.webhookHandler = async (req, res) => {
         include: ['User']
       });
 
-      if (order) {
+      if (!order) {
+        logger.warn('No order matches the paid payment intent', { paymentIntentId: paymentIntent.id });
+      } else if (order.status !== 'pending') {
+        // Stripe redelivers an event until it sees a 2xx, so the same success
+        // arrives more than once. Only a pending order may move to paid: a
+        // replay must not re-notify the customer, and an order already shipped
+        // or delivered must not be dragged backwards.
+        logger.info('Ignoring payment event for a non-pending order', {
+          orderId: order.id,
+          status: order.status
+        });
+      } else {
         await order.update({ status: 'paid' });
         notificationService.paymentSuccess(order.User, order).catch((notifyErr) => {
           logger.error('Payment notification failed', { orderId: order.id, error: notifyErr.message });
         });
+        logger.info('Order marked as paid', { orderId: order.id, paymentIntentId: paymentIntent.id });
       }
-
-      logger.info('Payment intent succeeded', { paymentIntentId: paymentIntent.id, amount: paymentIntent.amount });
     }
   } catch (err) {
     logger.error('Webhook event processing error', { error: err.message });
