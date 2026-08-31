@@ -10,7 +10,8 @@ exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
           currency: 'eur',
           product_data: {
             name: item.name,
-            images: [item.imageUrl],
+            // Stripe rejects a null entry, so only send the key when we have one.
+            ...(item.imageUrl ? { images: [item.imageUrl] } : {}),
           },
           unit_amount: Math.round(item.price * 100),
         },

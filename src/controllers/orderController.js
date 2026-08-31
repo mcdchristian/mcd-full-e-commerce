@@ -2,16 +2,73 @@ const { Order, OrderItem, Cart, CartItem, Product, sequelize } = require('../mod
 const stripeService = require('../services/stripeService');
 const notificationService = require('../services/notificationService');
 
+/**
+ * Turn the client's cart payload into line items priced from the database.
+ * Only the product id and the quantity are taken from the request; the name,
+ * image and unit price always come from our own records.
+ *
+ * @param {Array} items - Raw cart entries sent by the browser
+ * @returns {Promise<{ lineItems: Array } | { error: { status: number, message: string } }>}
+ */
+const buildLineItemsFromCatalog = async (items) => {
+  const quantityByProductId = new Map();
+
+  for (const item of items) {
+    const productId = item && item.id;
+    const quantity = Number(item && item.quantity !== undefined ? item.quantity : 1);
+
+    if (typeof productId !== 'string' || productId.length === 0) {
+      return { error: { status: 400, message: 'Identifiant de produit invalide' } };
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return { error: { status: 400, message: 'Quantité invalide' } };
+    }
+
+    quantityByProductId.set(productId, (quantityByProductId.get(productId) || 0) + quantity);
+  }
+
+  const products = await Product.findAll({
+    where: { id: Array.from(quantityByProductId.keys()) }
+  });
+
+  if (products.length !== quantityByProductId.size) {
+    return { error: { status: 404, message: "Un produit du panier n'est plus disponible" } };
+  }
+
+  const lineItems = [];
+  for (const product of products) {
+    const quantity = quantityByProductId.get(product.id);
+
+    if (product.stock < quantity) {
+      return { error: { status: 400, message: `Stock insuffisant pour : ${product.name}` } };
+    }
+
+    lineItems.push({
+      name: product.name,
+      imageUrl: product.imageUrl,
+      price: Number(product.price),
+      quantity
+    });
+  }
+
+  return { lineItems };
+};
+
 exports.createCheckoutSession = async (req, res) => {
   try {
     const { items } = req.body;
-    
-    if (!items || items.length === 0) {
+
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'Le panier est vide' });
     }
 
+    const { lineItems, error: validationError } = await buildLineItemsFromCatalog(items);
+    if (validationError) {
+      return res.status(validationError.status).json({ message: validationError.message });
+    }
+
     const session = await stripeService.createCheckoutSession(
-      items,
+      lineItems,
       `${process.env.APP_URL}/cart?success=true`,
       `${process.env.APP_URL}/cart?canceled=true`
     );
