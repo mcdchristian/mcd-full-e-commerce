@@ -79,11 +79,20 @@ exports.updateCartItem = async (req, res) => {
     }
 
     const cartItem = await CartItem.findOne({
-      where: { id: req.params.id, cartId: cart.id }
+      where: { id: req.params.id, cartId: cart.id },
+      include: [Product]
     });
 
     if (!cartItem) {
       return res.status(404).json({ message: 'Cart item not found' });
+    }
+
+    if (!cartItem.Product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    if (quantity > cartItem.Product.stock) {
+      return res.status(400).json({ message: 'Insufficient stock' });
     }
 
     cartItem.quantity = quantity;
