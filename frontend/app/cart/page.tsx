@@ -5,12 +5,14 @@ import { useAuth } from '../../store/authStore';
 import api from '../../lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
-import Image from 'next/image';
+import { Suspense, useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '../../lib/errors';
 
-export default function CartPage() {
+function CartView() {
   const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSuccess = searchParams.get('success') === 'true';
@@ -23,16 +25,29 @@ export default function CartPage() {
   }, [isSuccess, clearCart, items.length]);
 
   const handleCheckout = async () => {
+    // The session is still being restored from the stored token; bouncing to
+    // the login page now would sign out a visitor who is already signed in.
+    if (isAuthLoading) return;
+
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/cart');
       return;
     }
 
+    setIsRedirecting(true);
+
     try {
-      const res = await api.post('/orders/checkout-session', { items });
+      const res = await api.post('/orders/checkout-session', {
+        // The server prices the order from its own catalogue, so it only needs
+        // to know which products and how many of each.
+        items: items.map(({ id, quantity }) => ({ id, quantity })),
+      });
       window.location.href = res.data.url;
     } catch (err) {
-      alert('Erreur lors de l\'initialisation du paiement. Vérifiez vos clés Stripe dans le fichier .env');
+      toast.error(
+        getApiErrorMessage(err, "Impossible d'initialiser le paiement. Réessayez dans un instant.")
+      );
+      setIsRedirecting(false);
     }
   };
 
@@ -123,9 +138,10 @@ export default function CartPage() {
                     </div>
                     <button 
                       onClick={handleCheckout}
-                      className="w-full py-4 bg-cyan-500 text-white rounded-2xl font-bold hover:bg-cyan-600 transition-all shadow-lg shadow-cyan-500/20"
+                      disabled={isRedirecting || isAuthLoading}
+                      className="w-full py-4 bg-cyan-500 text-white rounded-2xl font-bold hover:bg-cyan-600 transition-all shadow-lg shadow-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Passer à la caisse
+                      {isRedirecting ? 'Redirection...' : 'Passer à la caisse'}
                     </button>
                     <button 
                       onClick={clearCart}
@@ -141,5 +157,27 @@ export default function CartPage() {
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+// useSearchParams opts the subtree into client rendering, so Next requires a
+// Suspense boundary above it before it can prerender this route.
+function CartFallback() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-16">
+        <div className="mb-12 h-12 w-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-64 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+      </main>
+    </div>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={<CartFallback />}>
+      <CartView />
+    </Suspense>
   );
 }

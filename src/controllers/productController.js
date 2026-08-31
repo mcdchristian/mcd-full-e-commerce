@@ -2,6 +2,16 @@ const { Product, Category } = require('../models');
 const { Op } = require('sequelize');
 const { getPagination, getPagingData } = require('../utils/pagination');
 
+// Sorting is driven by the query string, so both halves of the ORDER BY clause
+// are matched against a fixed list instead of being forwarded to the driver.
+const SORTABLE_FIELDS = ['createdAt', 'name', 'price', 'stock'];
+const SORT_DIRECTIONS = ['ASC', 'DESC'];
+
+const parsePositiveNumber = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+
 exports.getProducts = async (req, res) => {
   try {
     const { page, limit, search, categoryId, minPrice, maxPrice, sortBy, order } = req.query;
@@ -14,14 +24,18 @@ exports.getProducts = async (req, res) => {
     if (categoryId) {
       where.categoryId = categoryId;
     }
-    if (minPrice || maxPrice) {
+
+    const min = parsePositiveNumber(minPrice);
+    const max = parsePositiveNumber(maxPrice);
+    if (min !== null || max !== null) {
       where.price = {};
-      if (minPrice) where.price[Op.gte] = minPrice;
-      if (maxPrice) where.price[Op.lte] = maxPrice;
+      if (min !== null) where.price[Op.gte] = min;
+      if (max !== null) where.price[Op.lte] = max;
     }
 
-    const sortField = sortBy || 'createdAt';
-    const sortOrder = order || 'DESC';
+    const sortField = SORTABLE_FIELDS.includes(sortBy) ? sortBy : 'createdAt';
+    const requestedOrder = String(order || '').toUpperCase();
+    const sortOrder = SORT_DIRECTIONS.includes(requestedOrder) ? requestedOrder : 'DESC';
 
     const data = await Product.findAndCountAll({
       where,

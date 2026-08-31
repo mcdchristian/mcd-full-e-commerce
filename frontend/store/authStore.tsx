@@ -1,6 +1,11 @@
 "use client";
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import api from '../lib/api';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import api, {
+  UNAUTHORIZED_EVENT,
+  clearAuthToken,
+  getAuthToken,
+  setAuthToken,
+} from '../lib/api';
 
 interface User {
   id: string;
@@ -15,27 +20,65 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  /** True until the stored token has been exchanged for a profile. */
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = async (email: string, password: string) => {
-    const res = await api.post('/auth/login', { email, password });
-    const userData = res.data;
-    localStorage.setItem('token', userData.token);
-    setUser(userData);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
+  const logout = useCallback(() => {
+    clearAuthToken();
     setUser(null);
-  };
+  }, []);
+
+  // The token survives a reload but the React tree does not, so exchange it for
+  // the profile on mount instead of rendering a signed-out UI to a signed-in user.
+  useEffect(() => {
+    if (!getAuthToken()) {
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    api
+      .get<User>('/auth/me')
+      .then((res) => {
+        if (!cancelled) setUser(res.data);
+      })
+      .catch(() => {
+        clearAuthToken();
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // A token rejected mid-session must clear the UI too, not just storage.
+  useEffect(() => {
+    const handleUnauthorized = () => setUser(null);
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+  }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const res = await api.post<User & { token: string }>('/auth/login', { email, password });
+    const { token, ...profile } = res.data;
+
+    setAuthToken(token);
+    setUser(profile);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated: !!user, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import api from '../../../lib/api';
+import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '../../../lib/errors';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -12,15 +14,20 @@ export default function RegisterPage() {
     email: '',
     password: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
       await api.post('/auth/register', formData);
+      toast.success('Compte créé, connectez-vous pour continuer.');
       router.push('/auth/login');
     } catch (err) {
-      alert('Erreur lors de l\'inscription');
+      toast.error(getApiErrorMessage(err, "Erreur lors de l'inscription"));
+      setIsSubmitting(false);
     }
   };
 
@@ -80,8 +87,12 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({...formData, password: e.target.value})}
             />
           </div>
-          <button className="w-full py-4 mt-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-900 shadow-xl">
-            S'inscrire
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-4 mt-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-900 shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting ? 'Création...' : "S'inscrire"}
           </button>
         </form>
 
