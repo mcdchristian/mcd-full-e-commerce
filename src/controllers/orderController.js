@@ -2,6 +2,7 @@ const { Order, OrderItem, Cart, CartItem, Product, sequelize } = require('../mod
 const stripeService = require('../services/stripeService');
 const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');
+const { getPagination, getPagingData } = require('../utils/pagination');
 
 /**
  * Turn the client's cart payload into line items priced from the database.
@@ -169,13 +170,23 @@ exports.createOrder = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.findAll({
+    const { page, limit } = req.query;
+    const { limit: pageSize, offset } = getPagination({ page, limit });
+
+    const data = await Order.findAndCountAll({
       where: { userId: req.user.id },
       include: [OrderItem],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      limit: pageSize,
+      offset,
+      // Without distinct, the OrderItem join multiplies the count by the number
+      // of lines per order and totalPages comes out several times too large.
+      distinct: true
     });
-    res.json(orders);
+
+    res.json(getPagingData(data, page, pageSize));
   } catch (error) {
+    logger.error('Fetching orders failed', { requestId: req.id, error: error.message });
     res.status(500).json({ message: error.message });
   }
 };
