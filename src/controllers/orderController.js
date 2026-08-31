@@ -1,6 +1,7 @@
 const { Order, OrderItem, Cart, CartItem, Product, sequelize } = require('../models');
 const stripeService = require('../services/stripeService');
 const notificationService = require('../services/notificationService');
+const logger = require('../utils/logger');
 
 /**
  * Turn the client's cart payload into line items priced from the database.
@@ -80,15 +81,17 @@ exports.createCheckoutSession = async (req, res) => {
 };
 
 exports.createOrder = async (req, res) => {
-  const t = await sequelize.transaction();
+  // Opened only once every check has passed, so no early return can leak a
+  // transaction and no error path can roll back a committed one.
+  let transaction = null;
+
   try {
     const { shippingAddress } = req.body;
 
     if (!shippingAddress || shippingAddress.trim().length === 0) {
-      await t.rollback();
       return res.status(400).json({ message: 'shippingAddress is required' });
     }
-    
+
     // 1. Get user's cart with items and product details
     const cart = await Cart.findOne({
       where: { userId: req.user.id },
@@ -106,14 +109,17 @@ exports.createOrder = async (req, res) => {
     let totalAmount = 0;
     for (const item of cart.CartItems) {
       if (item.Product.stock < item.quantity) {
-        await t.rollback();
         return res.status(400).json({ message: `Insufficient stock for product: ${item.Product.name}` });
       }
-      totalAmount += item.Product.price * item.quantity;
+      totalAmount += Number(item.Product.price) * item.quantity;
     }
+    totalAmount = Math.round(totalAmount * 100) / 100;
 
-    // 3. Create Stripe Payment Intent
+    // 3. Create the Stripe Payment Intent before opening the transaction, so a
+    //    slow network round trip never holds a database connection open.
     const paymentIntent = await stripeService.createPaymentIntent(totalAmount);
+
+    transaction = await sequelize.transaction();
 
     // 4. Create Order
     const order = await Order.create({
@@ -122,7 +128,7 @@ exports.createOrder = async (req, res) => {
       shippingAddress,
       stripePaymentIntentId: paymentIntent.id,
       status: 'pending'
-    }, { transaction: t });
+    }, { transaction });
 
     // 5. Create Order Items & Update Stock
     for (const item of cart.CartItems) {
@@ -131,26 +137,32 @@ exports.createOrder = async (req, res) => {
         productId: item.productId,
         quantity: item.quantity,
         priceAtPurchase: item.Product.price
-      }, { transaction: t });
+      }, { transaction });
 
       // Atomically decrement stock
-      await item.Product.decrement('stock', { by: item.quantity, transaction: t });
+      await item.Product.decrement('stock', { by: item.quantity, transaction });
     }
 
     // 6. Clear Cart
-    await CartItem.destroy({ where: { cartId: cart.id }, transaction: t });
+    await CartItem.destroy({ where: { cartId: cart.id }, transaction });
 
-    await t.commit();
+    await transaction.commit();
+    transaction = null;
 
     // 7. Send Notification (Async)
-    notificationService.orderConfirmed(req.user, order).catch(console.error);
+    notificationService.orderConfirmed(req.user, order).catch((err) => {
+      logger.error('Order confirmation notification failed', { orderId: order.id, error: err.message });
+    });
 
     res.status(201).json({
       order,
       clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
-    await t.rollback();
+    if (transaction) {
+      await transaction.rollback();
+    }
+    logger.error('Order creation failed', { requestId: req.id, error: error.message });
     res.status(500).json({ message: error.message });
   }
 };
