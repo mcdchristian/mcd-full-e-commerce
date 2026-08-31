@@ -6,8 +6,8 @@ import api from '../../lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Suspense, useEffect, useState } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getApiErrorMessage } from '../../lib/errors';
 
 function CartView() {
   const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
@@ -44,8 +44,9 @@ function CartView() {
       });
       window.location.href = res.data.url;
     } catch (err) {
-      const serverMessage = axios.isAxiosError(err) ? err.response?.data?.message : null;
-      toast.error(serverMessage || "Impossible d'initialiser le paiement. Réessayez dans un instant.");
+      toast.error(
+        getApiErrorMessage(err, "Impossible d'initialiser le paiement. Réessayez dans un instant.")
+      );
       setIsRedirecting(false);
     }
   };
