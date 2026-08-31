@@ -54,8 +54,10 @@ app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Handle unknown API routes (404)
-app.all('/api/*', (req, res) => {
+// Handle unknown API routes (404).
+// Mounted with app.use() rather than a wildcard path: Express 5 relies on
+// path-to-regexp v8, which rejects the unnamed '*' pattern at startup.
+app.use('/api', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Cannot find ${req.method} ${req.originalUrl} on this server`
