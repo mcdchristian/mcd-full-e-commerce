@@ -71,29 +71,39 @@ const port = process.env.PORT || 3000;
 const nextApp = next({ dev, dir: path.join(__dirname, '../frontend'), hostname, port });
 const handle = nextApp.getRequestHandler();
 
-// Function to prepare Next.js and setup the catch-all route
-app.prepareNext = async () => {
-  await nextApp.prepare();
-  logger.info('Next.js app prepared');
-  
-  // Use a middleware as catch-all to handle all other requests with Next.js
-  app.use((req, res) => {
-    return handle(req, res);
-  });
-};
-
 // Error Handling Middleware
-app.use((err, req, res, next) => {
+// eslint-disable-next-line no-unused-vars -- Express identifies error handlers by arity
+const errorHandler = (err, req, res, next) => {
   logger.error('Unhandled error', {
     requestId: req.id,
     message: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
   res.status(err.status || 500).json({
     message: err.message || 'Something went wrong on the server',
     requestId: req.id,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
-});
+};
+
+// Function to prepare Next.js and setup the catch-all route
+app.prepareNext = async () => {
+  await nextApp.prepare();
+  logger.info('Next.js app prepared');
+
+  // Use a middleware as catch-all to handle all other requests with Next.js
+  app.use((req, res) => {
+    return handle(req, res);
+  });
+
+  // Registered last: Express only routes an error to handlers declared after
+  // the middleware that threw it.
+  app.use(errorHandler);
+};
 
 module.exports = app;

@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const logger = require('../utils/logger');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
@@ -23,7 +24,7 @@ exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
     });
     return session;
   } catch (error) {
-    console.error('Stripe Session Error:', error.message);
+    logger.error('Stripe checkout session creation failed', { error: error.message });
     throw new Error('Checkout session creation failed');
   }
 };
@@ -36,7 +37,7 @@ exports.createPaymentIntent = async (amount, currency = 'eur') => {
     });
     return paymentIntent;
   } catch (error) {
-    console.error('Stripe PaymentIntent Error:', error.message);
+    logger.error('Stripe payment intent creation failed', { error: error.message });
     throw new Error('Payment intent creation failed');
   }
 };

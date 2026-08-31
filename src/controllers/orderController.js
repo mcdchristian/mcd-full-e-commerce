@@ -211,7 +211,7 @@ exports.webhookHandler = async (req, res) => {
   try {
     event = await stripeService.handleWebhook(sig, req.body);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    logger.error('Webhook signature verification failed', { error: err.message });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -227,13 +227,15 @@ exports.webhookHandler = async (req, res) => {
 
       if (order) {
         await order.update({ status: 'paid' });
-        notificationService.paymentSuccess(order.User, order).catch(console.error);
+        notificationService.paymentSuccess(order.User, order).catch((notifyErr) => {
+          logger.error('Payment notification failed', { orderId: order.id, error: notifyErr.message });
+        });
       }
 
-      console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
+      logger.info('Payment intent succeeded', { paymentIntentId: paymentIntent.id, amount: paymentIntent.amount });
     }
   } catch (err) {
-    console.error('Webhook event processing error:', err.message);
+    logger.error('Webhook event processing error', { error: err.message });
     // Still return 200 to prevent Stripe from retrying
   }
 
