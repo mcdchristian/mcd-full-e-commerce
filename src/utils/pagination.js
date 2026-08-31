@@ -1,13 +1,25 @@
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+
+/**
+ * Parse a value into a strictly positive integer.
+ * @param {*} value - Raw value, usually a query string entry
+ * @param {Number} fallback - Value used when parsing fails or yields <= 0
+ * @returns {Number}
+ */
+const toPositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 /**
  * Offset-based pagination helper
  * @param {Object} query - Express query object
  * @returns {Object} - limit and offset
  */
-const getPagination = (query) => {
-  const page = parseInt(query.page) || 1;
-  const size = parseInt(query.limit) || 10;
-  
-  const limit = size > 100 ? 100 : size; // Max 100 items per page
+const getPagination = (query = {}) => {
+  const page = toPositiveInt(query.page, 1);
+  const limit = Math.min(toPositiveInt(query.limit, DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
   const offset = (page - 1) * limit;
 
   return { limit, offset };
@@ -22,10 +34,11 @@ const getPagination = (query) => {
  */
 const getPagingData = (data, page, limit) => {
   const { count: totalItems, rows: items } = data;
-  const currentPage = page ? +page : 1;
-  const totalPages = Math.ceil(totalItems / limit);
+  const currentPage = toPositiveInt(page, 1);
+  const pageSize = toPositiveInt(limit, DEFAULT_PAGE_SIZE);
+  const totalPages = Math.ceil(totalItems / pageSize);
 
   return { totalItems, items, totalPages, currentPage };
 };
 
-module.exports = { getPagination, getPagingData };
+module.exports = { getPagination, getPagingData, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE };
