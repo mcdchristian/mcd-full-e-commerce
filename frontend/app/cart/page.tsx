@@ -5,10 +5,9 @@ import { useAuth } from '../../store/authStore';
 import api from '../../lib/api';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect } from 'react';
-import Image from 'next/image';
+import { Suspense, useEffect } from 'react';
 
-export default function CartPage() {
+function CartView() {
   const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -141,5 +140,27 @@ export default function CartPage() {
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+// useSearchParams opts the subtree into client rendering, so Next requires a
+// Suspense boundary above it before it can prerender this route.
+function CartFallback() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-16">
+        <div className="mb-12 h-12 w-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
+        <div className="h-64 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+      </main>
+    </div>
+  );
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={<CartFallback />}>
+      <CartView />
+    </Suspense>
   );
 }

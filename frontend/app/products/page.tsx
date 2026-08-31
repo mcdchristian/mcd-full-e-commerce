@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import ProductCard from '../../components/ProductCard';
-import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function ProductsPage() {
+function ProductCatalog() {
   const searchParams = useSearchParams();
   const categoryId = searchParams.get('category');
   const search = searchParams.get('search');
@@ -55,5 +55,31 @@ export default function ProductsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+// useSearchParams opts the subtree into client rendering, so Next requires a
+// Suspense boundary above it before it can prerender this route.
+function CatalogFallback() {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-16">
+        <div className="mb-12 h-12 w-72 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="h-[400px] animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<CatalogFallback />}>
+      <ProductCatalog />
+    </Suspense>
   );
 }
