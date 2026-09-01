@@ -20,12 +20,24 @@ export default function ProductDetails() {
     },
   });
 
-  const { addToCart } = useCart();
+  const { addToCart, items } = useCart();
 
   if (isLoading) return <div className="p-20 text-center text-xl font-bold">Chargement...</div>;
   if (!product) return <div className="p-20 text-center text-red-500">Produit non trouvé</div>;
 
+  const quantityInCart = items.find((item) => item.id === product.id)?.quantity ?? 0;
+  const stock = product.stock ?? Infinity;
+  const canAdd = quantityInCart < stock;
+  const isOutOfStock = stock <= 0;
+
   const handleAddToCart = () => {
+    if (!canAdd) {
+      toast.error(
+        isOutOfStock ? 'Ce produit est en rupture de stock.' : 'Stock maximum atteint pour ce produit.'
+      );
+      return;
+    }
+
     addToCart(product);
     toast.success(`${product.name} ajouté au panier !`);
   };
@@ -67,9 +79,10 @@ export default function ProductDetails() {
 
             <button 
               onClick={handleAddToCart}
-              className="mt-10 w-full rounded-2xl bg-zinc-900 py-5 text-lg font-bold text-white transition-all hover:bg-zinc-800 active:scale-95 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-2xl"
+              disabled={!canAdd}
+              className="mt-10 w-full rounded-2xl bg-zinc-900 py-5 text-lg font-bold text-white transition-all hover:bg-zinc-800 active:scale-95 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-2xl disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:shadow-none dark:disabled:bg-zinc-700"
             >
-              Ajouter au Panier
+              {isOutOfStock ? 'Rupture de stock' : canAdd ? 'Ajouter au Panier' : 'Stock maximum atteint'}
             </button>
           </div>
         </div>

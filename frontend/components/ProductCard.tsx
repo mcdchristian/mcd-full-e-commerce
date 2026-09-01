@@ -16,9 +16,23 @@ export interface Product {
 }
 
 export default function ProductCard({ product }: { product: Product }) {
-  const { addToCart } = useCart();
+  const { addToCart, items } = useCart();
+
+  // The API refuses a line that exceeds the stock, so the button has to account
+  // for what is already sitting in the cart, not just the raw stock figure.
+  const quantityInCart = items.find((item) => item.id === product.id)?.quantity ?? 0;
+  const stock = product.stock ?? Infinity;
+  const canAdd = quantityInCart < stock;
+  const isOutOfStock = stock <= 0;
 
   const handleAddToCart = () => {
+    if (!canAdd) {
+      toast.error(
+        isOutOfStock ? 'Ce produit est en rupture de stock.' : 'Stock maximum atteint pour ce produit.'
+      );
+      return;
+    }
+
     addToCart(product);
     toast.success(`${product.name} ajouté au panier !`);
   };
@@ -56,9 +70,10 @@ export default function ProductCard({ product }: { product: Product }) {
       <div className="px-4 pb-4">
         <button 
           onClick={handleAddToCart}
-          className="w-full rounded-xl bg-cyan-600 py-3 text-sm font-bold text-white transition-all hover:bg-cyan-700 active:scale-95 shadow-lg shadow-cyan-500/20"
+          disabled={!canAdd}
+          className="w-full rounded-xl bg-cyan-600 py-3 text-sm font-bold text-white transition-all hover:bg-cyan-700 active:scale-95 shadow-lg shadow-cyan-500/20 disabled:cursor-not-allowed disabled:bg-zinc-400 disabled:shadow-none dark:disabled:bg-zinc-700"
         >
-          Ajouter au panier
+          {isOutOfStock ? 'Rupture de stock' : canAdd ? 'Ajouter au panier' : 'Stock maximum atteint'}
         </button>
       </div>
     </motion.div>
