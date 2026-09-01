@@ -2,11 +2,17 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
-import { motion } from 'framer-motion';
 import Link from 'next/link';
 
+interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+}
+
 export default function CategoriesPage() {
-  const { data: categories, isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: async () => {
       const res = await api.get('/products/categories/all'); 
@@ -28,7 +34,7 @@ export default function CategoriesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {categories?.map((category: any) => (
+            {categories?.map((category) => (
               <Link 
                 key={category.id} 
                 href={`/products?category=${category.id}`}
