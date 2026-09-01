@@ -1,4 +1,5 @@
 const { Order, OrderItem, Cart, CartItem, Product, sequelize } = require('../models');
+const { Op, literal } = require('sequelize');
 const stripeService = require('../services/stripeService');
 const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');
@@ -134,15 +135,32 @@ exports.createOrder = async (req, res, next) => {
 
     // 5. Create Order Items & Update Stock
     for (const item of cart.CartItems) {
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        throw AppError.badRequest(`Invalid quantity for product: ${item.Product.name}`);
+      }
+
       await OrderItem.create({
         orderId: order.id,
         productId: item.productId,
-        quantity: item.quantity,
+        quantity,
         priceAtPurchase: item.Product.price
       }, { transaction });
 
-      // Atomically decrement stock
-      await item.Product.decrement('stock', { by: item.quantity, transaction });
+      // The stock check in step 2 read a value another checkout may already
+      // have claimed. Re-assert it inside the UPDATE so the database, not this
+      // process, decides who gets the last unit.
+      const [rowsUpdated] = await Product.update(
+        { stock: literal(`stock - ${quantity}`) },
+        {
+          where: { id: item.productId, stock: { [Op.gte]: quantity } },
+          transaction
+        }
+      );
+
+      if (rowsUpdated === 0) {
+        throw AppError.badRequest(`Insufficient stock for product: ${item.Product.name}`);
+      }
     }
 
     // 6. Clear Cart
