@@ -2,11 +2,16 @@ const { Product, Category } = require('../models');
 const { Op } = require('sequelize');
 const { getPagination, getPagingData } = require('../utils/pagination');
 const AppError = require('../utils/AppError');
+const pickFields = require('../utils/pickFields');
 
 // Sorting is driven by the query string, so both halves of the ORDER BY clause
 // are matched against a fixed list instead of being forwarded to the driver.
 const SORTABLE_FIELDS = ['createdAt', 'name', 'price', 'stock'];
 const SORT_DIRECTIONS = ['ASC', 'DESC'];
+
+// Columns an admin may write. Everything else the model declares — the primary
+// key above all — stays out of reach of the request body.
+const WRITABLE_FIELDS = ['name', 'description', 'price', 'stock', 'imageUrl', 'categoryId'];
 
 const parsePositiveNumber = (value) => {
   const parsed = Number.parseFloat(value);
@@ -73,7 +78,7 @@ exports.getProductById = async (req, res, next) => {
 
 exports.createProduct = async (req, res, next) => {
   try {
-    const product = await Product.create(req.body);
+    const product = await Product.create(pickFields(req.body, WRITABLE_FIELDS));
     res.status(201).json(product);
   } catch (error) {
     next(error);
@@ -86,7 +91,12 @@ exports.updateProduct = async (req, res, next) => {
     if (!product) {
       throw AppError.notFound('Product not found');
     }
-    await product.update(req.body);
+    const attributes = pickFields(req.body, WRITABLE_FIELDS);
+    if (Object.keys(attributes).length === 0) {
+      throw AppError.badRequest('No updatable fields supplied');
+    }
+
+    await product.update(attributes);
     res.json(product);
   } catch (error) {
     next(error);
