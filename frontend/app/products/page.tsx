@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
-import ProductCard from '../../components/ProductCard';
+import ProductCard, { Product } from '../../components/ProductCard';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -42,7 +42,7 @@ function ProductCatalog() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {productsData?.items?.map((product: any) => (
+            {productsData?.items?.map((product: Product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

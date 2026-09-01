@@ -4,6 +4,7 @@ import api from '../lib/api';
 import Navbar from '../components/Navbar';
 import ProductCard, { Product } from '../components/ProductCard';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export default function Home() {
   const { data: products, isLoading, error } = useQuery({
@@ -23,10 +24,13 @@ export default function Home() {
         <section className="relative h-[60vh] w-full overflow-hidden bg-zinc-900 flex items-center justify-center">
           <div className="absolute inset-0 opacity-40">
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-900 to-transparent z-10" />
-            <img 
-              src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000" 
-              className="h-full w-full object-cover" 
-              alt="Hero"
+            <Image
+              src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&q=80&w=2000"
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
             />
           </div>
           
