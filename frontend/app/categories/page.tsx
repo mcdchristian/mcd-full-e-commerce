@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Category {
   id: number;
@@ -41,10 +42,12 @@ export default function CategoriesPage() {
                 className="group relative h-64 overflow-hidden rounded-3xl bg-zinc-900 shadow-xl"
               >
                 {category.imageUrl && (
-                  <img 
-                    src={category.imageUrl} 
-                    alt={category.name}
-                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-60"
+                  <Image
+                    src={category.imageUrl}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110 opacity-60"
                   />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
