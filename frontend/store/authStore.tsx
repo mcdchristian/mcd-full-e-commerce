@@ -38,24 +38,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // The token survives a reload but the React tree does not, so exchange it for
   // the profile on mount instead of rendering a signed-out UI to a signed-in user.
   useEffect(() => {
-    if (!getAuthToken()) {
-      setIsLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
-    api
-      .get<User>('/auth/me')
-      .then((res) => {
-        if (!cancelled) setUser(res.data);
-      })
-      .catch(() => {
+    const restoreSession = async (): Promise<User | null> => {
+      if (!getAuthToken()) return null;
+
+      try {
+        const res = await api.get<User>('/auth/me');
+        return res.data;
+      } catch {
         clearAuthToken();
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+        return null;
+      }
+    };
+
+    // Settling through the promise keeps both updates out of the effect body:
+    // the no-token case would otherwise call setState synchronously on mount
+    // and force a second render pass before the first has painted.
+    restoreSession().then((profile) => {
+      if (cancelled) return;
+
+      if (profile) setUser(profile);
+      setIsLoading(false);
+    });
 
     return () => {
       cancelled = true;
