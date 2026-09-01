@@ -1,6 +1,7 @@
 const { Cart, CartItem, Product } = require('../models');
+const AppError = require('../utils/AppError');
 
-exports.getCart = async (req, res) => {
+exports.getCart = async (req, res, next) => {
   try {
     const [cart] = await Cart.findOrCreate({
       where: { userId: req.user.id },
@@ -16,22 +17,22 @@ exports.getCart = async (req, res) => {
 
     res.json(fullCart);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.addToCart = async (req, res) => {
+exports.addToCart = async (req, res, next) => {
   try {
     const { productId, quantity } = req.body;
 
     if (!productId) {
-      return res.status(400).json({ message: 'productId is required' });
+      throw AppError.badRequest('productId is required');
     }
 
     // Verify product exists and has stock
     const product = await Product.findByPk(productId);
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      throw AppError.notFound('Product not found');
     }
 
     const [cart] = await Cart.findOrCreate({
@@ -45,7 +46,7 @@ exports.addToCart = async (req, res) => {
 
     const newQty = (cartItem ? cartItem.quantity : 0) + (quantity || 1);
     if (newQty > product.stock) {
-      return res.status(400).json({ message: 'Insufficient stock' });
+      throw AppError.badRequest('Insufficient stock');
     }
 
     if (cartItem) {
@@ -61,21 +62,21 @@ exports.addToCart = async (req, res) => {
 
     res.status(201).json(cartItem);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.updateCartItem = async (req, res) => {
+exports.updateCartItem = async (req, res, next) => {
   try {
     const { quantity } = req.body;
 
     if (!quantity || quantity < 1) {
-      return res.status(400).json({ message: 'quantity must be at least 1' });
+      throw AppError.badRequest('quantity must be at least 1');
     }
 
     const cart = await Cart.findOne({ where: { userId: req.user.id } });
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      throw AppError.notFound('Cart not found');
     }
 
     const cartItem = await CartItem.findOne({
@@ -84,15 +85,15 @@ exports.updateCartItem = async (req, res) => {
     });
 
     if (!cartItem) {
-      return res.status(404).json({ message: 'Cart item not found' });
+      throw AppError.notFound('Cart item not found');
     }
 
     if (!cartItem.Product) {
-      return res.status(404).json({ message: 'Product not found' });
+      throw AppError.notFound('Product not found');
     }
 
     if (quantity > cartItem.Product.stock) {
-      return res.status(400).json({ message: 'Insufficient stock' });
+      throw AppError.badRequest('Insufficient stock');
     }
 
     cartItem.quantity = quantity;
@@ -100,15 +101,15 @@ exports.updateCartItem = async (req, res) => {
 
     res.json(cartItem);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.removeFromCart = async (req, res) => {
+exports.removeFromCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ where: { userId: req.user.id } });
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      throw AppError.notFound('Cart not found');
     }
 
     const cartItem = await CartItem.findOne({
@@ -116,21 +117,21 @@ exports.removeFromCart = async (req, res) => {
     });
 
     if (!cartItem) {
-      return res.status(404).json({ message: 'Cart item not found' });
+      throw AppError.notFound('Cart item not found');
     }
 
     await cartItem.destroy();
     res.json({ message: 'Item removed from cart' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.clearCart = async (req, res) => {
+exports.clearCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ where: { userId: req.user.id } });
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      throw AppError.notFound('Cart not found');
     }
 
     const deletedCount = await CartItem.destroy({ where: { cartId: cart.id } });
@@ -139,6 +140,6 @@ exports.clearCart = async (req, res) => {
       itemsRemoved: deletedCount
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
