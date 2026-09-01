@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { User, Cart } = require('../models');
-const logger = require('../utils/logger');
+const AppError = require('../utils/AppError');
 
 const DEFAULT_TOKEN_TTL = '7d';
 
@@ -23,14 +23,14 @@ const toAuthPayload = (user) => ({
   token: generateToken(user.id)
 });
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
   try {
     const { firstName, lastName, password } = req.body;
     const email = normalizeEmail(req.body.email);
 
     const userExists = await User.findOne({ where: { email } });
     if (userExists) {
-      return res.status(409).json({ message: 'User already exists' });
+      throw AppError.conflict('User already exists');
     }
 
     const user = await User.create({
@@ -49,57 +49,49 @@ exports.register = async (req, res) => {
     // Two concurrent signups for the same address both pass the check above;
     // the unique index settles it, and that is a conflict, not a server fault.
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(409).json({ message: 'User already exists' });
+      return next(AppError.conflict('User already exists'));
     }
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: error.errors.map((e) => e.message)
-      });
+      return next(AppError.badRequest(error.errors.map((e) => e.message).join(', ')));
     }
 
-    logger.error('Registration failed', { requestId: req.id, error: error.message });
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
   try {
     const { password } = req.body;
     const email = normalizeEmail(req.body.email);
 
     const user = await User.findOne({ where: { email } });
-
     if (!user) {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+      throw AppError.unauthorized('Email ou mot de passe incorrect');
     }
 
     const isMatch = await user.comparePassword(password);
-
     if (!isMatch) {
-      return res.status(401).json({ message: 'Email ou mot de passe incorrect' });
+      throw AppError.unauthorized('Email ou mot de passe incorrect');
     }
 
     res.json(toAuthPayload(user));
   } catch (error) {
-    logger.error('Login failed', { requestId: req.id, error: error.message });
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.getMe = async (req, res) => {
+exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password'] }
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      throw AppError.notFound('User not found');
     }
 
     res.json(user);
   } catch (error) {
-    logger.error('Fetching current user failed', { requestId: req.id, error: error.message });
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
