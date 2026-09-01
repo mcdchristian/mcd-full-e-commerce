@@ -2,6 +2,7 @@ const { Order, OrderItem, Cart, CartItem, Product, sequelize } = require('../mod
 const stripeService = require('../services/stripeService');
 const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');
+const AppError = require('../utils/AppError');
 const { getPagination, getPagingData } = require('../utils/pagination');
 
 /**
@@ -56,17 +57,17 @@ const buildLineItemsFromCatalog = async (items) => {
   return { lineItems };
 };
 
-exports.createCheckoutSession = async (req, res) => {
+exports.createCheckoutSession = async (req, res, next) => {
   try {
     const { items } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: 'Le panier est vide' });
+      throw AppError.badRequest('Le panier est vide');
     }
 
     const { lineItems, error: validationError } = await buildLineItemsFromCatalog(items);
     if (validationError) {
-      return res.status(validationError.status).json({ message: validationError.message });
+      throw new AppError(validationError.message, validationError.status);
     }
 
     const session = await stripeService.createCheckoutSession(
@@ -77,11 +78,11 @@ exports.createCheckoutSession = async (req, res) => {
 
     res.json({ url: session.url });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.createOrder = async (req, res) => {
+exports.createOrder = async (req, res, next) => {
   // Opened only once every check has passed, so no early return can leak a
   // transaction and no error path can roll back a committed one.
   let transaction = null;
@@ -90,7 +91,7 @@ exports.createOrder = async (req, res) => {
     const { shippingAddress } = req.body;
 
     if (!shippingAddress || shippingAddress.trim().length === 0) {
-      return res.status(400).json({ message: 'shippingAddress is required' });
+      throw AppError.badRequest('shippingAddress is required');
     }
 
     // 1. Get user's cart with items and product details
@@ -103,14 +104,14 @@ exports.createOrder = async (req, res) => {
     });
 
     if (!cart || cart.CartItems.length === 0) {
-      return res.status(400).json({ message: 'Cart is empty' });
+      throw AppError.badRequest('Cart is empty');
     }
 
     // 2. Calculate total and verify stock
     let totalAmount = 0;
     for (const item of cart.CartItems) {
       if (item.Product.stock < item.quantity) {
-        return res.status(400).json({ message: `Insufficient stock for product: ${item.Product.name}` });
+        throw AppError.badRequest(`Insufficient stock for product: ${item.Product.name}`);
       }
       totalAmount += Number(item.Product.price) * item.quantity;
     }
@@ -163,12 +164,11 @@ exports.createOrder = async (req, res) => {
     if (transaction) {
       await transaction.rollback();
     }
-    logger.error('Order creation failed', { requestId: req.id, error: error.message });
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.getOrders = async (req, res) => {
+exports.getOrders = async (req, res, next) => {
   try {
     const { page, limit } = req.query;
     const { limit: pageSize, offset } = getPagination({ page, limit });
@@ -186,12 +186,11 @@ exports.getOrders = async (req, res) => {
 
     res.json(getPagingData(data, page, pageSize));
   } catch (error) {
-    logger.error('Fetching orders failed', { requestId: req.id, error: error.message });
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-exports.getOrderById = async (req, res) => {
+exports.getOrderById = async (req, res, next) => {
   try {
     const order = await Order.findByPk(req.params.id, {
       include: [{
@@ -201,17 +200,17 @@ exports.getOrderById = async (req, res) => {
     });
 
     if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
+      throw AppError.notFound('Order not found');
     }
 
     // Check ownership
     if (order.userId !== req.user.id && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
+      throw AppError.forbidden('Not authorized');
     }
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
