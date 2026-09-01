@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const next = require('next');
 const requestId = require('./middleware/requestId');
+const errorHandler = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 const { sequelize } = require('./config/db');
 
@@ -87,26 +88,6 @@ const hostname = 'localhost';
 const port = process.env.PORT || 3000;
 const nextApp = next({ dev, dir: path.join(__dirname, '../frontend'), hostname, port });
 const handle = nextApp.getRequestHandler();
-
-// Error Handling Middleware
-// The four-argument signature is what marks this as an error handler to Express.
-const errorHandler = (err, req, res, next) => {
-  logger.error('Unhandled error', {
-    requestId: req.id,
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
-
-  if (res.headersSent) {
-    return next(err);
-  }
-
-  res.status(err.status || 500).json({
-    message: err.message || 'Something went wrong on the server',
-    requestId: req.id,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-};
 
 // Function to prepare Next.js and setup the catch-all route
 app.prepareNext = async () => {
