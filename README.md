@@ -116,8 +116,35 @@ npm test          # run once
 npm run test:watch  # re-run on change
 ```
 
-Every push and pull request also runs the suite on Node 20 and 22 and builds
+The suite covers the request-validation middleware, the role gate, the central
+error handler, and the pagination, response, logging and field-allowlist
+helpers. Every push and pull request also runs it on Node 20 and 22 and builds
 the Next.js app, through the workflow in `.github/workflows/ci.yml`.
+
+## ⚠️ Error Responses
+
+Controllers never write error responses themselves. Expected failures are
+raised as `AppError` and travel through `next()` to a single handler:
+
+```js
+const AppError = require('../utils/AppError');
+
+if (!product) {
+  throw AppError.notFound('Product not found');
+}
+```
+
+Every failure comes back in the same shape, with the request id that ties it
+to the server log line:
+
+```json
+{ "message": "Product not found", "requestId": "0f8c…" }
+```
+
+Only a message we chose ourselves is repeated to the client. Anything
+unexpected — a dropped connection, a driver fault — is logged in full and
+answered with a generic sentence under a 500, so schema and driver details
+stay server side. The stack is added to the body in development only.
 
 ## 🩺 Health Check
 
