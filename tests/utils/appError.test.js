@@ -30,6 +30,7 @@ test('exposes a factory per common status', () => {
   assert.equal(AppError.forbidden().statusCode, 403);
   assert.equal(AppError.notFound().statusCode, 404);
   assert.equal(AppError.conflict('taken').statusCode, 409);
+  assert.equal(AppError.serviceUnavailable('down').statusCode, 503);
 });
 
 test('factories carry the supplied message and a usable default', () => {

@@ -44,6 +44,10 @@ class AppError extends Error {
   static conflict(message) {
     return new AppError(message, 409);
   }
+
+  static serviceUnavailable(message) {
+    return new AppError(message, 503);
+  }
 }
 
 module.exports = AppError;
