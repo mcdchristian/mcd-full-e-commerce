@@ -82,29 +82,57 @@ This platform is designed to provide a premium shopping experience with a focus 
    cd ..
    ```
 
-3. **Environment Setup**:
-   Copy `.env.example` to `.env` in the root directory and fill it in:
+3. **Create the database**:
+   ```bash
+   sudo mysql
+   ```
+   Then, at the prompt:
+   ```sql
+   CREATE DATABASE ecommerce_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'ecommerce'@'localhost' IDENTIFIED BY 'a-password-you-choose';
+   CREATE USER 'ecommerce'@'127.0.0.1' IDENTIFIED BY 'a-password-you-choose';
+   GRANT ALL PRIVILEGES ON ecommerce_db.* TO 'ecommerce'@'localhost';
+   GRANT ALL PRIVILEGES ON ecommerce_db.* TO 'ecommerce'@'127.0.0.1';
+   ```
+
+   Two notes that save an afternoon. On Debian and Ubuntu, MySQL's `root`
+   authenticates through the Unix socket, so `sudo mysql` works and
+   `mysql -u root -p` reports "Access denied" whatever you type. And MySQL
+   treats `localhost` and `127.0.0.1` as different hosts — granting only one
+   of them is the usual cause of an "Access denied" that appears after a setup
+   that otherwise looked fine.
+
+4. **Environment Setup**:
    ```bash
    cp .env.example .env
    ```
 
-   The server refuses to start without `JWT_SECRET`, `STRIPE_SECRET_KEY`,
-   `STRIPE_WEBHOOK_SECRET` and `APP_URL`. `JWT_EXPIRES_IN` is optional and
-   defaults to `7d`.
+   The server refuses to start without `DB_NAME`, `DB_USER`, `DB_HOST`,
+   `JWT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `APP_URL`,
+   and names the ones you missed. `JWT_EXPIRES_IN` defaults to `7d`,
+   `DB_LOGGING` follows `NODE_ENV`.
 
-4. **Run the Development Server**:
-   ```bash
-   npm run dev
-   ```
-   The application will be available at `http://localhost:3000`.
+   Leaving the Stripe placeholders in place is fine for everything except
+   payment: the server warns at boot, and checkout answers `503` with a message
+   saying so. Real test keys live at
+   https://dashboard.stripe.com/test/apikeys.
 
-5. **Seed the database** (optional):
+5. **Seed the database**:
    ```bash
    npm run seed
    ```
    Creates five categories, 250 products and an admin account
    (`admin@example.com` / `password123`). It drops the existing tables first,
-   so never point it at a database you care about.
+   so never point it at a database you care about — it refuses to run at all
+   when `NODE_ENV=production` unless `ALLOW_DESTRUCTIVE_SEED=true`.
+
+6. **Run the Development Server**:
+   ```bash
+   npm run dev
+   ```
+   The application will be available at `http://localhost:3000`, or at the
+   `PORT` you set. Set `APP_URL` to match — Stripe redirects back to it after
+   checkout.
 
 ## 🧪 Testing
 
@@ -117,8 +145,8 @@ npm run test:watch  # re-run on change
 ```
 
 The suite covers the request-validation middleware, the role gate, the central
-error handler, and the pagination, response, logging and field-allowlist
-helpers. Every push and pull request also runs it on Node 20 and 22 and builds
+error handler, the order status transitions, and the pagination, logging,
+field-allowlist, environment and Stripe-configuration helpers. Every push and pull request also runs it on Node 20 and 22 and builds
 the Next.js app, through the workflow in `.github/workflows/ci.yml`.
 
 ## ⚠️ Error Responses
@@ -145,6 +173,23 @@ Only a message we chose ourselves is repeated to the client. Anything
 unexpected — a dropped connection, a driver fault — is logged in full and
 answered with a generic sentence under a 500, so schema and driver details
 stay server side. The stack is added to the body in development only.
+
+## 🔐 Admin Endpoints
+
+Routes behind `authorize('admin')`, reachable with the token of an account
+whose `role` is `admin` — the seeded one, or any user promoted in the database:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/products` | Create a product |
+| `PUT` | `/api/products/:id` | Update a product |
+| `DELETE` | `/api/products/:id` | Delete a product |
+| `PATCH` | `/api/orders/:id/status` | Advance an order |
+
+Order statuses follow a fixed path: `pending → paid → shipped → delivered`,
+with `cancelled` reachable until the parcel ships. `delivered` and `cancelled`
+are terminal. A rejected move answers `409` and lists what the order can
+actually become.
 
 ## 🩺 Health Check
 
