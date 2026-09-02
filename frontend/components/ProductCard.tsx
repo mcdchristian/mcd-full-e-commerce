@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useCart } from '../store/cartStore';
 import toast from 'react-hot-toast';
+import { formatPrice } from '../lib/format';
 
 export interface Product {
   id: string;
@@ -61,7 +62,7 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
           <p className="mt-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">
-            {product.price} €
+            {formatPrice(product.price)}
           </p>
         </div>
       </Link>

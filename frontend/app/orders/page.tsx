@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../../components/Navbar';
 import api from '../../lib/api';
 import { useAuth } from '../../store/authStore';
+import { formatPrice } from '../../lib/format';
 
 type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -138,7 +139,7 @@ export default function OrdersPage() {
                     <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
                     Livraison : {order.shippingAddress}
                   </p>
-                  <p className="text-2xl font-black">{Number(order.totalAmount).toFixed(2)} €</p>
+                  <p className="text-2xl font-black">{formatPrice(order.totalAmount)}</p>
                 </div>
               </motion.article>
             ))}

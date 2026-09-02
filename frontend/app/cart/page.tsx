@@ -9,6 +9,7 @@ import { Suspense, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import ProductImage from '../../components/ProductImage';
 import { getApiErrorMessage } from '../../lib/errors';
+import { formatPrice } from '../../lib/format';
 
 function CartView() {
   const { items, updateQuantity, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
@@ -106,7 +107,7 @@ function CartView() {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-bold">{item.name}</h3>
-                          <p className="text-zinc-500">{item.price.toFixed(2)} € l&apos;unité</p>
+                          <p className="text-zinc-500">{formatPrice(item.price)} l&apos;unité</p>
 
                           <div className="mt-3 flex items-center gap-3">
                             <div className="flex items-center rounded-full border border-zinc-200 dark:border-zinc-700">
@@ -143,7 +144,7 @@ function CartView() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-black">{(item.price * item.quantity).toFixed(2)} €</p>
+                          <p className="text-lg font-black">{formatPrice(item.price * item.quantity)}</p>
                           <button 
                             onClick={() => removeFromCart(item.id)}
                             className="text-sm font-bold text-red-500 hover:underline mt-2"
@@ -160,7 +161,7 @@ function CartView() {
                     <div className="space-y-4 mb-8">
                       <div className="flex justify-between opacity-70">
                         <span>Sous-total</span>
-                        <span>{totalPrice.toFixed(2)} €</span>
+                        <span>{formatPrice(totalPrice)}</span>
                       </div>
                       <div className="flex justify-between opacity-70">
                         <span>Livraison</span>
@@ -168,7 +169,7 @@ function CartView() {
                       </div>
                       <div className="border-t border-white/10 pt-4 flex justify-between text-xl font-bold">
                         <span>Total</span>
-                        <span>{totalPrice.toFixed(2)} €</span>
+                        <span>{formatPrice(totalPrice)}</span>
                       </div>
                     </div>
                     <button 

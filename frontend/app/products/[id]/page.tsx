@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { Product } from '../../../components/ProductCard';
 import axios from 'axios';
 import { getApiErrorMessage } from '../../../lib/errors';
+import { formatPrice } from '../../../lib/format';
 
 /** The page shell, so the header stays reachable in every state. */
 function ProductShell({ children }: { children: React.ReactNode }) {
@@ -128,7 +129,7 @@ export default function ProductDetails() {
             </p>
             
             <div className="mt-10 flex items-center justify-between border-y border-zinc-200 py-6 dark:border-zinc-800">
-              <span className="text-4xl font-bold">{product.price} €</span>
+              <span className="text-4xl font-bold">{formatPrice(product.price)}</span>
               <span className={`text-sm font-medium ${(product.stock ?? 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {(product.stock ?? 0) > 0 ? `En stock (${product.stock})` : 'Rupture de stock'}
               </span>
