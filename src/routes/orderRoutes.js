@@ -5,9 +5,10 @@ const {
   getOrders,
   getOrderById,
   createCheckoutSession,
+  updateOrderStatus,
   webhookHandler
 } = require('../controllers/orderController');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { orderSchemas } = require('../middleware/validationSchemas');
 
@@ -20,5 +21,13 @@ router.post('/checkout-session', validate(orderSchemas.checkout), createCheckout
 router.post('/', validate(orderSchemas.create), createOrder);
 router.get('/', getOrders);
 router.get('/:id', getOrderById);
+
+// Fulfilment is a back-office action; the webhook owns the pending -> paid move.
+router.patch(
+  '/:id/status',
+  authorize('admin'),
+  validate(orderSchemas.updateStatus),
+  updateOrderStatus
+);
 
 module.exports = router;

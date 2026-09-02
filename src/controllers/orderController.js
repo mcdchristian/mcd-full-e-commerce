@@ -5,6 +5,7 @@ const notificationService = require('../services/notificationService');
 const logger = require('../utils/logger');
 const AppError = require('../utils/AppError');
 const { getPagination, getPagingData } = require('../utils/pagination');
+const { isOrderStatus, canTransition, nextStatuses } = require('../utils/orderStatus');
 
 /**
  * Turn the client's cart payload into line items priced from the database.
@@ -225,6 +226,45 @@ exports.getOrderById = async (req, res, next) => {
     if (order.userId !== req.user.id && req.user.role !== 'admin') {
       throw AppError.forbidden('Not authorized');
     }
+
+    res.json(order);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateOrderStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+
+    if (!isOrderStatus(status)) {
+      throw AppError.badRequest(`Unknown status: ${status}`);
+    }
+
+    const order = await Order.findByPk(req.params.id);
+    if (!order) {
+      throw AppError.notFound('Order not found');
+    }
+
+    if (order.status === status) {
+      return res.json(order);
+    }
+
+    if (!canTransition(order.status, status)) {
+      const reachable = nextStatuses(order.status);
+      throw AppError.conflict(
+        reachable.length > 0
+          ? `An order in "${order.status}" can only move to: ${reachable.join(', ')}`
+          : `An order in "${order.status}" is final and cannot change status`
+      );
+    }
+
+    await order.update({ status });
+    logger.info('Order status updated', {
+      orderId: order.id,
+      status,
+      updatedBy: req.user.id
+    });
 
     res.json(order);
   } catch (error) {

@@ -48,6 +48,9 @@ const orderSchemas = {
   },
   checkout: {
     items: { required: true }
+  },
+  updateStatus: {
+    status: { type: 'string', required: true, maxLength: 20 }
   }
 };
 
