@@ -11,7 +11,7 @@ import ProductImage from '../../components/ProductImage';
 import { getApiErrorMessage } from '../../lib/errors';
 
 function CartView() {
-  const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
@@ -106,7 +106,41 @@ function CartView() {
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-bold">{item.name}</h3>
-                          <p className="text-zinc-500">{item.price} € x {item.quantity}</p>
+                          <p className="text-zinc-500">{item.price.toFixed(2)} € l&apos;unité</p>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            <div className="flex items-center rounded-full border border-zinc-200 dark:border-zinc-700">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                aria-label={`Retirer un ${item.name}`}
+                                className="px-3 py-1 text-lg leading-none text-zinc-500 hover:text-cyan-600"
+                              >
+                                −
+                              </button>
+                              <span
+                                aria-live="polite"
+                                className="min-w-8 text-center text-sm font-bold tabular-nums"
+                              >
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                disabled={item.stock !== undefined && item.quantity >= item.stock}
+                                aria-label={`Ajouter un ${item.name}`}
+                                className="px-3 py-1 text-lg leading-none text-zinc-500 hover:text-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {item.stock !== undefined && item.quantity >= item.stock && (
+                              <span className="text-xs font-medium text-amber-600">
+                                Stock maximum
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-black">{(item.price * item.quantity).toFixed(2)} €</p>
