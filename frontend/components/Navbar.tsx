@@ -1,5 +1,6 @@
 "use client";
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '../store/authStore';
 import { useCart } from '../store/cartStore';
@@ -13,8 +14,36 @@ export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const { totalItems } = useCart();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const router = useRouter();
 
   const closeMenu = () => setIsMenuOpen(false);
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const trimmed = query.trim();
+    router.push(trimmed ? `/products?search=${encodeURIComponent(trimmed)}` : '/products');
+    closeMenu();
+  };
+
+  // Rendered twice — beside the links on desktop, inside the panel on mobile —
+  // so the ids have to differ even though the behaviour is identical.
+  const searchForm = (id: string, className: string) => (
+    <form onSubmit={handleSearch} role="search" className={className}>
+      <label htmlFor={id} className="sr-only">
+        Rechercher un produit
+      </label>
+      <input
+        id={id}
+        type="search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Rechercher un produit..."
+        className="w-full rounded-full bg-zinc-100 px-4 py-2 text-sm outline-none transition-all focus:ring-2 focus:ring-cyan-500 dark:bg-zinc-800"
+      />
+    </form>
+  );
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -25,12 +54,13 @@ export default function Navbar() {
           </span>
         </Link>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden flex-1 items-center gap-8 px-8 md:flex">
           {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="text-sm font-medium hover:text-cyan-500">
+            <Link key={link.href} href={link.href} className="whitespace-nowrap text-sm font-medium hover:text-cyan-500">
               {link.label}
             </Link>
           ))}
+          {searchForm('nav-search-desktop', 'ml-auto w-full max-w-xs')}
         </div>
 
         <div className="flex items-center gap-4">
@@ -95,7 +125,8 @@ export default function Navbar() {
 
       {isMenuOpen && (
         <div id="mobile-nav" className="border-t border-zinc-200 dark:border-zinc-800 md:hidden">
-          <div className="container mx-auto flex flex-col px-4 py-2">
+          <div className="container mx-auto flex flex-col px-4 py-3">
+            {searchForm('nav-search-mobile', 'mb-2')}
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
