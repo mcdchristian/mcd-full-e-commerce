@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/api';
 import Navbar from '../../../components/Navbar';
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
+import ProductImage from '../../../components/ProductImage';
 import { motion } from 'framer-motion';
 import { useCart } from '../../../store/cartStore';
 import toast from 'react-hot-toast';
@@ -52,10 +52,9 @@ export default function ProductDetails() {
             animate={{ opacity: 1, scale: 1 }}
             className="relative aspect-square overflow-hidden rounded-3xl bg-zinc-100 dark:bg-zinc-800"
           >
-            <Image 
-              src={product.imageUrl || 'https://via.placeholder.com/400'} 
-              alt={product.name} 
-              fill
+            <ProductImage
+              src={product.imageUrl}
+              alt=""
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover"
             />

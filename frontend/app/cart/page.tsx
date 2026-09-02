@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Suspense, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
+import ProductImage from '../../components/ProductImage';
 import { getApiErrorMessage } from '../../lib/errors';
 
 function CartView() {
@@ -102,13 +102,7 @@ function CartView() {
                         className="flex items-center gap-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm"
                       >
                         <div className="relative h-24 w-24 overflow-hidden rounded-2xl bg-zinc-100">
-                          <Image
-                            src={item.imageUrl || 'https://via.placeholder.com/200'}
-                            alt=""
-                            fill
-                            sizes="96px"
-                            className="object-cover"
-                          />
+                          <ProductImage src={item.imageUrl} alt="" sizes="96px" className="object-cover" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-bold">{item.name}</h3>
