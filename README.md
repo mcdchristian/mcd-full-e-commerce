@@ -48,7 +48,7 @@ This platform is designed to provide a premium shopping experience with a focus 
 │   ├── controllers/    # Business logic for API endpoints
 │   ├── middleware/     # Auth, request id and validation middleware
 │   ├── services/       # Stripe and notification integrations
-│   ├── utils/          # Logger, pagination and response helpers
+│   ├── utils/          # Logger, errors, pagination and validation helpers
 │   ├── app.js          # Express app configuration & Next.js integration
 │   └── server.js       # Entry point for the backend server
 ├── tests/              # node:test unit suite (`npm test`)
