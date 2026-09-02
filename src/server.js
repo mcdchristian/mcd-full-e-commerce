@@ -3,6 +3,7 @@ const app = require('./app');
 const { connectDB, sequelize } = require('./config/db');
 const logger = require('./utils/logger');
 const { findMissingEnvVars } = require('./utils/validateEnv');
+const { isStripeKeyConfigured } = require('./utils/stripeConfig');
 require('./models'); // Load associations
 
 const validateEnv = () => {
@@ -17,6 +18,18 @@ const validateEnv = () => {
 };
 
 validateEnv();
+
+// Present but inert is the common case: .env.example ships a placeholder key,
+// and nothing surfaces it until a shopper reaches checkout and gets a 503.
+const warnOnPlaceholderStripeKey = () => {
+  if (!isStripeKeyConfigured(process.env.STRIPE_SECRET_KEY)) {
+    logger.warn('Stripe secret key looks like a placeholder — checkout will answer 503', {
+      hint: 'Set STRIPE_SECRET_KEY to a real key from https://dashboard.stripe.com/test/apikeys'
+    });
+  }
+};
+
+warnOnPlaceholderStripeKey();
 
 const PORT = process.env.PORT || 3000;
 
