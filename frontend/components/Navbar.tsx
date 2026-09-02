@@ -77,6 +77,13 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <div className="flex items-center gap-2">
+              <Link
+                href="/orders"
+                onClick={closeMenu}
+                className="hidden text-sm font-medium hover:text-cyan-500 sm:inline"
+              >
+                Mes commandes
+              </Link>
               <span className="hidden text-sm font-medium sm:inline">{user?.firstName}</span>
               <div className="h-8 w-8 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center text-cyan-600">
                 {user?.firstName[0]}
