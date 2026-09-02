@@ -2,19 +2,16 @@ require('dotenv').config();
 const app = require('./app');
 const { connectDB, sequelize } = require('./config/db');
 const logger = require('./utils/logger');
+const { findMissingEnvVars } = require('./utils/validateEnv');
 require('./models'); // Load associations
 
-const requiredEnvVars = [
-  'JWT_SECRET',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'APP_URL'
-];
-
 const validateEnv = () => {
-  const missing = requiredEnvVars.filter(key => !process.env[key]);
+  const missing = findMissingEnvVars(process.env);
   if (missing.length > 0) {
-    logger.error('Missing required environment variables', { variables: missing });
+    logger.error('Missing required environment variables', {
+      variables: missing,
+      hint: 'Copy .env.example to .env and fill these in.'
+    });
     process.exit(1);
   }
 };
