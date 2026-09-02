@@ -17,6 +17,8 @@ export interface CartItem {
   price: number;
   quantity: number;
   imageUrl: string;
+  /** Snapshot taken when the line was added, so the cart can cap increments. */
+  stock?: number;
 }
 
 /** The subset of a product the cart needs; `price` arrives as a DECIMAL string. */
@@ -25,11 +27,13 @@ export interface CartProduct {
   name: string;
   price: number | string;
   imageUrl?: string;
+  stock?: number;
 }
 
 interface CartContextType {
   items: CartItem[];
   addToCart: (product: CartProduct, quantity?: number) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   totalItems: number;
@@ -149,8 +153,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
             price: toPrice(product.price),
             quantity: amount,
             imageUrl: product.imageUrl ?? '',
+            stock: product.stock,
           },
         ];
+      });
+    },
+    [mutate]
+  );
+
+  const updateQuantity = useCallback(
+    (id: string, quantity: number) => {
+      const amount = Math.floor(quantity);
+
+      mutate((prevItems) => {
+        // Dropping below one removes the line, which is what the minus button
+        // at a quantity of one should do.
+        if (amount < 1) return prevItems.filter((item) => item.id !== id);
+
+        return prevItems.map((item) => {
+          if (item.id !== id) return item;
+          const capped = item.stock === undefined ? amount : Math.min(amount, item.stock);
+          return { ...item, quantity: Math.max(1, capped) };
+        });
       });
     },
     [mutate]
@@ -172,7 +196,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{ items, addToCart, removeFromCart, clearCart, totalItems, totalPrice }}
+      value={{ items, addToCart, updateQuantity, removeFromCart, clearCart, totalItems, totalPrice }}
     >
       {children}
     </CartContext.Provider>

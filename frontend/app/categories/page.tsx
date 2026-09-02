@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
 import Link from 'next/link';
-import Image from 'next/image';
+import ProductImage from '../../components/ProductImage';
 
 interface Category {
   id: number;
@@ -41,15 +41,12 @@ export default function CategoriesPage() {
                 href={`/products?category=${category.id}`}
                 className="group relative h-64 overflow-hidden rounded-3xl bg-zinc-900 shadow-xl"
               >
-                {category.imageUrl && (
-                  <Image
-                    src={category.imageUrl}
-                    alt=""
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-110 opacity-60"
-                  />
-                )}
+                <ProductImage
+                  src={category.imageUrl}
+                  alt=""
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-110 opacity-60"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
                   <h3 className="text-3xl font-black text-white uppercase tracking-widest drop-shadow-2xl">{category.name}</h3>

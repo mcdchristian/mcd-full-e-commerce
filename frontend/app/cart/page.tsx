@@ -7,11 +7,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Suspense, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
+import ProductImage from '../../components/ProductImage';
 import { getApiErrorMessage } from '../../lib/errors';
+import { formatPrice } from '../../lib/format';
 
 function CartView() {
-  const { items, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
+  const { items, updateQuantity, removeFromCart, totalPrice, totalItems, clearCart } = useCart();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
@@ -102,20 +103,48 @@ function CartView() {
                         className="flex items-center gap-6 p-6 bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-100 dark:border-zinc-800 shadow-sm"
                       >
                         <div className="relative h-24 w-24 overflow-hidden rounded-2xl bg-zinc-100">
-                          <Image
-                            src={item.imageUrl || 'https://via.placeholder.com/200'}
-                            alt=""
-                            fill
-                            sizes="96px"
-                            className="object-cover"
-                          />
+                          <ProductImage src={item.imageUrl} alt="" sizes="96px" className="object-cover" />
                         </div>
                         <div className="flex-1">
                           <h3 className="text-lg font-bold">{item.name}</h3>
-                          <p className="text-zinc-500">{item.price} € x {item.quantity}</p>
+                          <p className="text-zinc-500">{formatPrice(item.price)} l&apos;unité</p>
+
+                          <div className="mt-3 flex items-center gap-3">
+                            <div className="flex items-center rounded-full border border-zinc-200 dark:border-zinc-700">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                aria-label={`Retirer un ${item.name}`}
+                                className="px-3 py-1 text-lg leading-none text-zinc-500 hover:text-cyan-600"
+                              >
+                                −
+                              </button>
+                              <span
+                                aria-live="polite"
+                                className="min-w-8 text-center text-sm font-bold tabular-nums"
+                              >
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                disabled={item.stock !== undefined && item.quantity >= item.stock}
+                                aria-label={`Ajouter un ${item.name}`}
+                                className="px-3 py-1 text-lg leading-none text-zinc-500 hover:text-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {item.stock !== undefined && item.quantity >= item.stock && (
+                              <span className="text-xs font-medium text-amber-600">
+                                Stock maximum
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-black">{(item.price * item.quantity).toFixed(2)} €</p>
+                          <p className="text-lg font-black">{formatPrice(item.price * item.quantity)}</p>
                           <button 
                             onClick={() => removeFromCart(item.id)}
                             className="text-sm font-bold text-red-500 hover:underline mt-2"
@@ -132,7 +161,7 @@ function CartView() {
                     <div className="space-y-4 mb-8">
                       <div className="flex justify-between opacity-70">
                         <span>Sous-total</span>
-                        <span>{totalPrice.toFixed(2)} €</span>
+                        <span>{formatPrice(totalPrice)}</span>
                       </div>
                       <div className="flex justify-between opacity-70">
                         <span>Livraison</span>
@@ -140,7 +169,7 @@ function CartView() {
                       </div>
                       <div className="border-t border-white/10 pt-4 flex justify-between text-xl font-bold">
                         <span>Total</span>
-                        <span>{totalPrice.toFixed(2)} €</span>
+                        <span>{formatPrice(totalPrice)}</span>
                       </div>
                     </div>
                     <button 

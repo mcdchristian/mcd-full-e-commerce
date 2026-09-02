@@ -20,6 +20,10 @@ const assertSafeToSeed = () => {
   process.exit(1);
 };
 
+// picsum.photos serves a stable image per seed string, so re-running the seed
+// keeps the same picture on the same product.
+const imageUrl = (seedValue) => `https://picsum.photos/seed/${seedValue}/800/800`;
+
 const seed = async () => {
   try {
     assertSafeToSeed();
@@ -31,32 +35,27 @@ const seed = async () => {
       { 
         name: 'Électronique', 
         description: 'Le summum de la technologie et de l\'innovation.', 
-        imageUrl: 'https://loremflickr.com/800/800/electronics,gadget/all?lock=0',
-        keywords: 'electronics,gadget,tech'
+        slug: 'electronique'
       },
       { 
         name: 'Mode', 
         description: 'Exprimez votre personnalité avec style.', 
-        imageUrl: 'https://loremflickr.com/800/800/fashion,clothing/all?lock=0',
-        keywords: 'fashion,clothing,outfit'
+        slug: 'mode'
       },
       { 
         name: 'Maison', 
         description: 'L\'élégance et le confort pour votre intérieur.', 
-        imageUrl: 'https://loremflickr.com/800/800/interior,furniture/all?lock=0',
-        keywords: 'interior,furniture,home'
+        slug: 'maison'
       },
       { 
         name: 'Beauté', 
         description: 'Révélez votre beauté naturelle.', 
-        imageUrl: 'https://loremflickr.com/800/800/beauty,cosmetics/all?lock=0',
-        keywords: 'beauty,cosmetics,skincare'
+        slug: 'beaute'
       },
       { 
         name: 'Sports', 
         description: 'La performance au service de votre passion.', 
-        imageUrl: 'https://loremflickr.com/800/800/fitness,sports/all?lock=0',
-        keywords: 'fitness,sports,equipment'
+        slug: 'sports'
       }
     ];
 
@@ -67,7 +66,7 @@ const seed = async () => {
       const createdCategory = await Category.create({
         name: cat.name,
         description: cat.description,
-        imageUrl: cat.imageUrl
+        imageUrl: imageUrl(`categorie-${cat.slug}`)
       });
 
       console.log(`Generating 50 products for ${cat.name}...`);
@@ -79,7 +78,7 @@ const seed = async () => {
           price: (Math.random() * 900 + 50).toFixed(2),
           stock: Math.floor(Math.random() * 100) + 1,
           categoryId: createdCategory.id,
-          imageUrl: `https://loremflickr.com/800/800/${cat.keywords}/all?lock=${lockId}`
+          imageUrl: imageUrl(`produit-${lockId}`)
         });
         lockId++;
       }

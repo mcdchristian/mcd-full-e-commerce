@@ -5,12 +5,16 @@ import Navbar from '../components/Navbar';
 import ProductCard, { Product } from '../components/ProductCard';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
+import Link from 'next/link';
+
+/** Two full rows of the four-column grid, and the skeleton count that matches. */
+const FEATURED_COUNT = 8;
 
 export default function Home() {
-  const { data: products, isLoading, error } = useQuery({
-    queryKey: ['products'],
+  const { data: products, isLoading, error } = useQuery<Product[]>({
+    queryKey: ['products', 'featured'],
     queryFn: async () => {
-      const res = await api.get('/products');
+      const res = await api.get('/products', { params: { limit: FEATURED_COUNT } });
       return res.data.items;
     },
   });
@@ -56,16 +60,22 @@ export default function Home() {
 
         {/* Product Grid */}
         <section className="container mx-auto px-4 py-16">
-          <div className="mb-12 flex items-end justify-between">
+          <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 className="text-3xl font-bold tracking-tight">Nouveautés</h2>
               <p className="mt-2 text-zinc-500">Nos produits les plus récents, juste pour vous.</p>
             </div>
+            <Link
+              href="/products"
+              className="rounded-full border border-zinc-200 px-6 py-3 text-sm font-bold transition-all hover:border-cyan-500 hover:text-cyan-600 dark:border-zinc-800"
+            >
+              Voir tout le catalogue
+            </Link>
           </div>
 
           {isLoading ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {[...Array(8)].map((_, i) => (
+              {[...Array(FEATURED_COUNT)].map((_, i) => (
                 <div key={i} className="h-[400px] animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-800" />
               ))}
             </div>
@@ -73,11 +83,15 @@ export default function Home() {
             <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200">
               <p className="text-red-500">Erreur lors du chargement des produits.</p>
             </div>
-          ) : (
+          ) : products && products.length > 0 ? (
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-              {products?.map((product: Product) => (
+              {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
+            </div>
+          ) : (
+            <div className="flex h-64 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
+              <p className="text-zinc-500">Le catalogue est vide pour le moment.</p>
             </div>
           )}
         </section>

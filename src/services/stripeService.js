@@ -1,9 +1,38 @@
 const Stripe = require('stripe');
 const logger = require('../utils/logger');
+const AppError = require('../utils/AppError');
+const { isStripeKeyConfigured } = require('../utils/stripeConfig');
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+
+const PAYMENTS_UNAVAILABLE =
+  "Le paiement est indisponible : la clé API Stripe n'est pas configurée sur ce serveur.";
+
+/** Refuse before the round trip when the key is obviously a placeholder. */
+const assertConfigured = () => {
+  if (!isStripeKeyConfigured(process.env.STRIPE_SECRET_KEY)) {
+    throw AppError.serviceUnavailable(PAYMENTS_UNAVAILABLE);
+  }
+};
+
+/**
+ * Translate a Stripe failure into something the caller can act on.
+ * A key that looks well formed but Stripe rejects is still our configuration
+ * problem, not something a shopper fixes by trying again.
+ */
+const toAppError = (error, fallbackMessage) => {
+  if (error instanceof AppError) return error;
+  if (error.type === 'StripeAuthenticationError') {
+    return AppError.serviceUnavailable(PAYMENTS_UNAVAILABLE);
+  }
+
+  return new AppError(fallbackMessage, 502);
+};
 
 exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
   try {
+    assertConfigured();
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: items.map(item => ({
@@ -25,12 +54,14 @@ exports.createCheckoutSession = async (items, successUrl, cancelUrl) => {
     return session;
   } catch (error) {
     logger.error('Stripe checkout session creation failed', { error: error.message });
-    throw new Error('Checkout session creation failed');
+    throw toAppError(error, 'La session de paiement n\'a pas pu être créée.');
   }
 };
 
 exports.createPaymentIntent = async (amount, currency = 'eur') => {
   try {
+    assertConfigured();
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency,
@@ -38,7 +69,7 @@ exports.createPaymentIntent = async (amount, currency = 'eur') => {
     return paymentIntent;
   } catch (error) {
     logger.error('Stripe payment intent creation failed', { error: error.message });
-    throw new Error('Payment intent creation failed');
+    throw toAppError(error, "L'intention de paiement n'a pas pu être créée.");
   }
 };
 

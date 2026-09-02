@@ -48,6 +48,9 @@ exports.getProducts = async (req, res, next) => {
       limit: l,
       offset,
       order: [[sortField, sortOrder]],
+      // The listing renders a name, a price and an image; the description is
+      // several hundred bytes per row that only the detail view ever shows.
+      attributes: { exclude: ['description'] },
       include: [{
         model: Category,
         as: 'category',

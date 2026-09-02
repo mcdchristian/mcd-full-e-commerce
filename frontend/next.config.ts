@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'loremflickr.com',
       },
+      {
+        // Seed image host. Kept alongside loremflickr so databases seeded
+        // before the switch still resolve rather than raising a config error.
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
     ],
   },
 };
