@@ -2,17 +2,34 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../../../lib/api';
 import Navbar from '../../../components/Navbar';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import ProductImage from '../../../components/ProductImage';
 import { motion } from 'framer-motion';
 import { useCart } from '../../../store/cartStore';
 import toast from 'react-hot-toast';
 import { Product } from '../../../components/ProductCard';
+import axios from 'axios';
+import { getApiErrorMessage } from '../../../lib/errors';
+
+/** The page shell, so the header stays reachable in every state. */
+function ProductShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="container mx-auto flex-1 px-4 py-16">{children}</main>
+    </div>
+  );
+}
+
+const isNotFound = (error: unknown): boolean =>
+  axios.isAxiosError(error) && error.response?.status === 404;
 
 export default function ProductDetails() {
   const { id } = useParams();
   
-  const { data: product, isLoading } = useQuery<Product>({
+  const router = useRouter();
+
+  const { data: product, isLoading, error } = useQuery<Product>({
     queryKey: ['product', id],
     queryFn: async () => {
       const res = await api.get(`/products/${id}`);
@@ -22,8 +39,49 @@ export default function ProductDetails() {
 
   const { addToCart, items } = useCart();
 
-  if (isLoading) return <div className="p-20 text-center text-xl font-bold">Chargement...</div>;
-  if (!product) return <div className="p-20 text-center text-red-500">Produit non trouvé</div>;
+  if (isLoading) {
+    return (
+      <ProductShell>
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+          <div className="aspect-square animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />
+          <div className="flex flex-col justify-center gap-4">
+            <div className="h-4 w-32 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-12 w-3/4 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-24 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+          </div>
+        </div>
+      </ProductShell>
+    );
+  }
+
+  if (!product) {
+    // A 404 means the product is gone; anything else is a transport failure,
+    // and telling someone their product does not exist because the network
+    // dropped sends them looking for the wrong problem.
+    const isMissing = isNotFound(error);
+
+    return (
+      <ProductShell>
+        <div className="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-zinc-200 py-24 text-center dark:border-zinc-800">
+          <div className="mb-6 text-6xl">{isMissing ? '🔍' : '⚠️'}</div>
+          <h1 className="mb-2 text-2xl font-bold">
+            {isMissing ? 'Produit introuvable' : 'Chargement impossible'}
+          </h1>
+          <p className="mb-8 max-w-md text-zinc-500">
+            {isMissing
+              ? "Ce produit n'existe plus ou l'adresse est incorrecte."
+              : getApiErrorMessage(error, 'Réessayez dans un instant.')}
+          </p>
+          <button
+            onClick={() => router.push('/products')}
+            className="rounded-2xl bg-zinc-900 px-8 py-4 font-bold text-white transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            Retour au catalogue
+          </button>
+        </div>
+      </ProductShell>
+    );
+  }
 
   const quantityInCart = items.find((item) => item.id === product.id)?.quantity ?? 0;
   const stock = product.stock ?? Infinity;
