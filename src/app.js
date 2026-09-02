@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 const next = require('next');
 const requestId = require('./middleware/requestId');
@@ -65,6 +66,21 @@ app.get('/api/health', async (req, res) => {
 
   res.json(health);
 });
+
+// Blanket limit for the API. /api/auth keeps its own, much stricter one, and
+// it is registered first so credential stuffing still hits the tighter budget.
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  message: { message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Stripe calls the webhook, not a browser. Dropping an event to a rate limit
+  // would leave a paid order stuck in `pending` with no retry left.
+  skip: (req) => req.path === '/orders/webhook'
+});
+
+app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api/auth', authRoutes);
